@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   RadarChart,
   PolarGrid,
@@ -43,17 +43,33 @@ import { cn } from "@/lib/utils";
 export default function DashboardPage() {
   const [tasks, setTasks] = useState(todayTasks);
 
-  const toggleTask = (id: string) => {
+  const toggleTask = useCallback((id: string) => {
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t))
     );
-  };
+  }, []);
 
-  const completedTasks = tasks.filter((t) => t.done).length;
-  const totalXpToday = tasks.filter((t) => t.done).reduce((a, t) => a + t.xp, 0);
+  const { completedTasks, totalXpToday } = useMemo(() => {
+    let completed = 0;
+    let xp = 0;
+    for (const t of tasks) {
+      if (t.done) {
+        completed++;
+        xp += t.xp;
+      }
+    }
+    return { completedTasks: completed, totalXpToday: xp };
+  }, [tasks]);
 
-  const recommendedCourses = courses.filter((c) => c.status !== "completed").slice(0, 3);
-  const earnedAchievements = achievements.filter((a) => !a.locked).slice(0, 3);
+  const recommendedCourses = useMemo(
+    () => courses.filter((c) => c.status !== "completed").slice(0, 3),
+    []
+  );
+
+  const earnedAchievements = useMemo(
+    () => achievements.filter((a) => !a.locked).slice(0, 3),
+    []
+  );
 
   return (
     <div className="p-4 lg:p-6 space-y-6 animate-fade-in">

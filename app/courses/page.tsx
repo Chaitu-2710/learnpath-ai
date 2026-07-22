@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { courses } from "@/lib/data/mockData";
 import type { Course } from "@/lib/types";
 import { Star, Clock, PlayCircle, CheckCircle2, BookOpen, Filter } from "lucide-react";
@@ -14,11 +14,13 @@ export default function CoursesPage() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [filter, setFilter] = useState<"all" | "in-progress" | "not-started" | "completed">("all");
 
-  const filtered = courses.filter((c) => {
-    const catMatch = activeCategory === "All" || c.category === activeCategory;
-    const statusMatch = filter === "all" || c.status === filter;
-    return catMatch && statusMatch;
-  });
+  const filtered = useMemo(() => {
+    return courses.filter((c) => {
+      const catMatch = activeCategory === "All" || c.category === activeCategory;
+      const statusMatch = filter === "all" || c.status === filter;
+      return catMatch && statusMatch;
+    });
+  }, [activeCategory, filter]);
 
   return (
     <div className="p-4 lg:p-6 space-y-6 animate-fade-in">

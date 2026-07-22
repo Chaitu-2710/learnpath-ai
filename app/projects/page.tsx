@@ -1,19 +1,35 @@
 "use client";
 
+import { useState, useMemo, useCallback } from "react";
 import { projects } from "@/lib/data/mockData";
 import type { Project } from "@/lib/types";
 import { Clock, TrendingUp, Plus, CheckCircle2, FolderKanban } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
 
 export default function ProjectsPage() {
   const [added, setAdded] = useState<string[]>(["p1", "p4"]);
 
-  const toggleAdd = (id: string) => {
-    setAdded((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
-  };
+  const toggleAdd = useCallback((id: string) => {
+    setAdded((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }, []);
+
+  const stats = useMemo(() => {
+    let inProgress = 0;
+    let completed = 0;
+    let available = 0;
+    for (const p of projects) {
+      if (p.status === "in-progress") inProgress++;
+      else if (p.status === "completed") completed++;
+      else if (p.status === "not-started") available++;
+    }
+    return [
+      { label: "In Progress", value: inProgress, color: "text-brand-blue" },
+      { label: "Completed", value: completed, color: "text-brand-green" },
+      { label: "Available", value: available, color: "text-slate-300" },
+    ];
+  }, []);
 
   return (
     <div className="p-4 lg:p-6 space-y-6 animate-fade-in">
@@ -24,11 +40,7 @@ export default function ProjectsPage() {
 
       {/* Stats */}
       <div className="flex flex-wrap gap-3">
-        {[
-          { label: "In Progress", value: projects.filter(p => p.status === "in-progress").length, color: "text-brand-blue" },
-          { label: "Completed", value: projects.filter(p => p.status === "completed").length, color: "text-brand-green" },
-          { label: "Available", value: projects.filter(p => p.status === "not-started").length, color: "text-slate-300" },
-        ].map((s) => (
+        {stats.map((s) => (
           <div key={s.label} className="card px-5 py-3">
             <p className={cn("text-xl font-bold", s.color)}>{s.value}</p>
             <p className="text-xs text-slate-400">{s.label}</p>
