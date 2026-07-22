@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Moon, Globe, Lock, Shield, Trash2, Save, User, Palette, BookOpen } from "lucide-react";
+import { Bell, Lock, Shield, Trash2, Save, User, Palette, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function Toggle({ enabled, onChange }: { enabled: boolean; onChange: () => void }) {

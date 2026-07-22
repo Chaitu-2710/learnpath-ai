@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { initialMessages, currentUser, skills } from "@/lib/data/mockData";
 import type { ChatMessage } from "@/lib/types";
-import Badge from "@/components/ui/Badge";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { cn } from "@/lib/utils";
 

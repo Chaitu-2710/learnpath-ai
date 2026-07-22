@@ -1,7 +1,7 @@
 "use client";
 
 import { codingProblems } from "@/lib/data/mockData";
-import { CheckCircle2, Circle, Building2, ChevronRight, Code2 } from "lucide-react";
+import { CheckCircle2, Circle, ChevronRight, Code2 } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
 import { useState } from "react";

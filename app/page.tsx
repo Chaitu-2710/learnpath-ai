@@ -14,7 +14,6 @@ import {
   Tooltip,
 } from "recharts";
 import {
-  Flame,
   Trophy,
   Target,
   BookOpen,

@@ -2,8 +2,6 @@
 
 import { careerStats, careerProgressData } from "@/lib/data/mockData";
 import {
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   Tooltip,
@@ -22,7 +20,6 @@ import {
   Building2,
   TrendingUp,
   AlertTriangle,
-  CheckCircle2,
   ChevronRight,
 } from "lucide-react";
 import ProgressBar from "@/components/ui/ProgressBar";

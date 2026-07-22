@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/lib/auth/AuthContext";
 import { skills, achievements, certifications, courses } from "@/lib/data/mockData";
-import { Flame, Trophy, Star, BookOpen, Award, Edit3, Share2, TrendingUp, LogOut, ShieldCheck } from "lucide-react";
+import { Flame, Trophy, BookOpen, Award, Edit3, Share2, TrendingUp, LogOut, ShieldCheck } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { cn } from "@/lib/utils";
