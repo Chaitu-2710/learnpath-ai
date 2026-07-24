@@ -1,22 +1,36 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { skills, achievements, certifications, courses } from "@/lib/data/mockData";
-import { Flame, Trophy, BookOpen, Award, Edit3, Share2, TrendingUp, LogOut, ShieldCheck } from "lucide-react";
+import { profileApi } from "@/lib/apiClient";
+import { Flame, Trophy, BookOpen, Award, Edit3, Share2, TrendingUp, LogOut, ShieldCheck, Loader2 } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { cn } from "@/lib/utils";
-
-const earnedAchievements = achievements.filter((a) => !a.locked);
-const lockedAchievements = achievements.filter((a) => a.locked);
+import { ProfileSkeleton } from "@/components/ui/Skeletons";
 
 export default function ProfilePage() {
   const { user, logout, isAdmin } = useAuth();
+  const [profileData, setProfileData] = useState<any>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+
+  useEffect(() => {
+    profileApi.get().then(setProfileData).catch(() => {}).finally(() => setIsLoadingProfile(false));
+  }, []);
 
   const xpToNextLevel = 500;
-  const xp = user?.xp || 3450;
-  const level = user?.level || 7;
+  const xp = profileData?.profile?.xp ?? user?.xp ?? 0;
+  const level = profileData?.profile?.level ?? user?.level ?? 1;
   const xpProgress = xp % xpToNextLevel;
+  const skills = profileData?.skills || [];
+  const achievements = profileData?.achievements || [];
+  // API returns 'enrollments' for course data
+  const enrollments = profileData?.enrollments || [];
+  const completedCourses = enrollments.filter((e: any) => e.status === "completed");
+  const earnedAchievements = achievements.filter((a: any) => !a.locked);
+  const lockedAchievements = achievements.filter((a: any) => a.locked);
+
+  if (isLoadingProfile) return <ProfileSkeleton />;
 
   const getInitials = (name?: string) => {
     if (!name) return "U";
@@ -93,10 +107,10 @@ export default function ProfilePage() {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: "Courses Completed", value: courses.filter(c => c.status === "completed").length, icon: BookOpen, color: "text-brand-blue" },
+          { label: "Courses Completed", value: completedCourses.length, icon: BookOpen, color: "text-brand-blue" },
           { label: "Achievements", value: earnedAchievements.length, icon: Trophy, color: "text-yellow-400" },
           { label: "Learning Streak", value: `${user?.streak || 0} days`, icon: Flame, color: "text-orange-400" },
-          { label: "Certifications", value: certifications.filter(c => c.status === "completed").length, icon: Award, color: "text-brand-green" },
+          { label: "Certifications", value: 0, icon: Award, color: "text-brand-green" },
         ].map((s) => {
           const Icon = s.icon;
           return (

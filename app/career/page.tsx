@@ -1,6 +1,7 @@
 "use client";
 
-import { careerStats, careerProgressData } from "@/lib/data/mockData";
+import { useState, useEffect } from "react";
+import { careerApi } from "@/lib/apiClient";
 import {
   XAxis,
   YAxis,
@@ -24,24 +25,53 @@ import {
 } from "lucide-react";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { cn, getScoreColor } from "@/lib/utils";
-
-const careerMetrics = [
-  { label: "Placement Readiness", value: careerStats.placementReadiness, icon: Briefcase, color: "green" as const },
-  { label: "Resume Score", value: careerStats.resumeScore, icon: FileText, color: "blue" as const },
-  { label: "Portfolio Progress", value: careerStats.portfolioProgress, icon: FolderKanban, color: "yellow" as const },
-  { label: "Interview Readiness", value: careerStats.interviewReadiness, icon: MessageSquare, color: "purple" as const },
-  { label: "Internship Readiness", value: careerStats.internshipReadiness, icon: Building2, color: "green" as const },
-];
-
-const skillGaps = [
-  { name: "Deep Learning", current: 20, target: 70, gap: 50 },
-  { name: "MLOps", current: 10, target: 60, gap: 50 },
-  { name: "System Design", current: 15, target: 55, gap: 40 },
-  { name: "DSA", current: 55, target: 80, gap: 25 },
-  { name: "Python", current: 78, target: 90, gap: 12 },
-];
+import { CareerSkeleton } from "@/components/ui/Skeletons";
 
 export default function CareerPage() {
+  const [careerStats, setCareerStats] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    careerApi.get().then(setCareerStats).catch(() => {}).finally(() => setIsLoading(false));
+  }, []);
+
+  if (isLoading) return <CareerSkeleton />;
+
+  // Backend returns snake_case. Normalize both formats for safety.
+  const stats = {
+    overallScore: careerStats?.overall_score ?? careerStats?.overallScore ?? 65,
+    placementReadiness: careerStats?.placement_readiness ?? careerStats?.placementReadiness ?? 65,
+    resumeScore: careerStats?.resume_score ?? careerStats?.resumeScore ?? 72,
+    portfolioProgress: careerStats?.portfolio_progress ?? careerStats?.portfolioProgress ?? 45,
+    interviewReadiness: careerStats?.interview_readiness ?? careerStats?.interviewReadiness ?? 50,
+    internshipReadiness: careerStats?.internship_readiness ?? careerStats?.internshipReadiness ?? 60,
+    skillGaps: careerStats?.skill_gaps ?? careerStats?.skillGaps ?? [
+      { name: "Deep Learning", current: 20, target: 70, gap: 50 },
+      { name: "MLOps", current: 10, target: 60, gap: 50 },
+      { name: "System Design", current: 15, target: 55, gap: 40 },
+      { name: "DSA", current: 55, target: 80, gap: 25 },
+      { name: "Python", current: 78, target: 90, gap: 12 },
+    ],
+    careerProgressData: careerStats?.career_progress_data ?? careerStats?.careerProgressData ?? [
+      { month: "Aug", score: 15 },
+      { month: "Sep", score: 22 },
+      { month: "Oct", score: 30 },
+      { month: "Nov", score: 42 },
+      { month: "Dec", score: 55 },
+      { month: "Jan", score: 65 },
+    ],
+  };
+  const skillGaps = stats.skillGaps;
+  const careerProgressData = stats.careerProgressData;
+
+  const careerMetrics = [
+    { label: "Placement Readiness", value: stats.placementReadiness, icon: Briefcase, color: "green" as const },
+    { label: "Resume Score", value: stats.resumeScore, icon: FileText, color: "blue" as const },
+    { label: "Portfolio Progress", value: stats.portfolioProgress, icon: FolderKanban, color: "yellow" as const },
+    { label: "Interview Readiness", value: stats.interviewReadiness, icon: MessageSquare, color: "purple" as const },
+    { label: "Internship Readiness", value: stats.internshipReadiness, icon: Building2, color: "green" as const },
+  ];
+
   return (
     <div className="p-4 lg:p-6 space-y-6 animate-fade-in">
       <div>
@@ -57,7 +87,7 @@ export default function CareerPage() {
             <RadialBarChart
               innerRadius="70%"
               outerRadius="100%"
-              data={[{ value: careerStats.overallScore, fill: "#22c55e" }]}
+              data={[{ value: stats.overallScore, fill: "#22c55e" }]}
               startAngle={90}
               endAngle={-270}
             >
@@ -67,7 +97,7 @@ export default function CareerPage() {
             </RadialBarChart>
           </ResponsiveContainer>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-3xl font-bold text-brand-green">{careerStats.overallScore}%</span>
+            <span className="text-3xl font-bold text-brand-green">{stats.overallScore}%</span>
             <span className="text-xs text-slate-400">Ready</span>
           </div>
         </div>

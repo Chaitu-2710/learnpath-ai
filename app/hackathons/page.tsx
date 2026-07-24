@@ -1,14 +1,26 @@
 "use client";
 
-import { hackathons } from "@/lib/data/mockData";
+import { useState, useEffect } from "react";
+import { hackathonsApi } from "@/lib/apiClient";
+import type { Hackathon } from "@/lib/types";
 import { Calendar, Users, Trophy, ExternalLink, Zap } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/utils";
 
 export default function HackathonsPage() {
-  const live = hackathons.filter((h) => h.status === "live");
-  const upcoming = hackathons.filter((h) => h.status === "upcoming");
+  const [hackathonsList, setHackathonsList] = useState<Hackathon[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    hackathonsApi.list()
+      .then(setHackathonsList)
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const live = hackathonsList.filter((h) => h.status === "live");
+  const upcoming = hackathonsList.filter((h) => h.status === "upcoming");
 
   return (
     <div className="p-4 lg:p-6 space-y-6 animate-fade-in">
@@ -17,27 +29,41 @@ export default function HackathonsPage() {
         <p className="text-slate-400 mt-1">Compete, build, and showcase your skills to the world</p>
       </div>
 
-      {/* Live NOW */}
-      {live.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
-            <h2 className="font-semibold text-slate-100">Live Now</h2>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {live.map((h) => <HackathonCard key={h.id} hackathon={h} />)}
-          </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <div className="animate-spin w-8 h-8 border-4 border-brand-green border-t-transparent rounded-full"></div>
         </div>
-      )}
+      ) : (
+        <>
+          {/* Live NOW */}
+          {live.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                <h2 className="font-semibold text-slate-100">Live Now</h2>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {live.map((h) => <HackathonCard key={h.id} hackathon={h} />)}
+              </div>
+            </div>
+          )}
 
-      {/* Upcoming */}
-      {upcoming.length > 0 && (
-        <div>
-          <h2 className="font-semibold text-slate-100 mb-3">Upcoming</h2>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {upcoming.map((h) => <HackathonCard key={h.id} hackathon={h} />)}
-          </div>
-        </div>
+          {/* Upcoming */}
+          {upcoming.length > 0 && (
+            <div>
+              <h2 className="font-semibold text-slate-100 mb-3 mt-4">Upcoming Competitions</h2>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {upcoming.map((h) => <HackathonCard key={h.id} hackathon={h} />)}
+              </div>
+            </div>
+          )}
+          
+          {live.length === 0 && upcoming.length === 0 && (
+            <div className="text-center py-10">
+               <p className="text-slate-400">No hackathons available right now.</p>
+            </div>
+          )}
+        </>
       )}
 
       {/* CTA Banner */}

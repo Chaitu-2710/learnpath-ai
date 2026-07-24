@@ -1,282 +1,156 @@
 "use client";
 
-import { useState } from "react";
-import { adminStudents } from "@/lib/data/mockData";
+import { useState, useEffect, useCallback } from "react";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import {
-  Users,
-  TrendingUp,
-  AlertTriangle,
-  Search,
-  MoreHorizontal,
-  Activity,
-  Cpu,
-  ShieldCheck,
-  Sparkles,
+  Search, Users, TrendingUp, AlertTriangle, Award, Loader2, RefreshCw
 } from "lucide-react";
-import Badge from "@/components/ui/Badge";
 import ProgressBar from "@/components/ui/ProgressBar";
+import Badge from "@/components/ui/Badge";
 import StatCard from "@/components/ui/StatCard";
+import { adminApi } from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
-
-const engagementData = [
-  { day: "Mon", users: 45 },
-  { day: "Tue", users: 62 },
-  { day: "Wed", users: 58 },
-  { day: "Thu", users: 71 },
-  { day: "Fri", users: 68 },
-  { day: "Sat", users: 40 },
-  { day: "Sun", users: 35 },
-];
-
-const progressDistribution = [
-  { range: "0–20%", count: 12 },
-  { range: "21–40%", count: 18 },
-  { range: "41–60%", count: 31 },
-  { range: "61–80%", count: 24 },
-  { range: "81–100%", count: 15 },
-];
+import { useDebounce } from "@/lib/hooks/useDebounce";
 
 export default function AdminPage() {
   const [search, setSearch] = useState("");
+  const [students, setStudents] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const debouncedSearch = useDebounce(search, 400);
 
-  const filtered = adminStudents.filter(
-    (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const loadData = useCallback(async (searchTerm?: string) => {
+    try {
+      const [studentsData, statsData] = await Promise.all([
+        adminApi.students(searchTerm),
+        adminApi.stats(),
+      ]);
+      setStudents(studentsData);
+      setStats(statsData);
+    } catch (err: any) {
+      setError(err.message || "Failed to load admin data");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-  const activeCount = adminStudents.filter((s) => s.status === "active").length;
-  const atRiskCount = adminStudents.filter((s) => s.status === "at-risk").length;
+  useEffect(() => {
+    loadData(debouncedSearch || undefined);
+  }, [debouncedSearch, loadData]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 text-brand-green animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-red-400 mb-4">⚠️ {error}</p>
+        <button onClick={() => { setError(""); setIsLoading(true); loadData(); }} className="btn-primary mx-auto">
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 lg:p-6 space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <ShieldCheck className="w-5 h-5 text-brand-blue" />
-            <h1 className="text-2xl font-bold text-slate-100">Admin Dashboard</h1>
-          </div>
-          <p className="text-slate-400">LearnPath AI · Platform Overview</p>
+          <h1 className="text-2xl font-bold text-slate-100">Admin Dashboard</h1>
+          <p className="text-slate-400 mt-1">Student management and platform analytics</p>
         </div>
-        <Badge variant="blue">Admin View</Badge>
+        <button
+          onClick={() => { setIsLoading(true); loadData(debouncedSearch || undefined); }}
+          className="btn-outline flex items-center gap-2"
+        >
+          <RefreshCw className="w-4 h-4" /> Refresh
+        </button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard
-          label="Total Students"
-          value={adminStudents.length}
-          color="blue"
-          change={12}
-          changeLabel="this month"
-          icon={<Users className="w-4 h-4" />}
-        />
-        <StatCard
-          label="Active Students"
-          value={activeCount}
-          color="green"
-          icon={<Activity className="w-4 h-4" />}
-        />
-        <StatCard
-          label="At-Risk Students"
-          value={atRiskCount}
-          color="red"
-          icon={<AlertTriangle className="w-4 h-4" />}
-        />
-        <StatCard
-          label="Avg. Progress"
-          value={`${Math.round(adminStudents.reduce((a, s) => a + s.progress, 0) / adminStudents.length)}%`}
-          color="yellow"
-          icon={<TrendingUp className="w-4 h-4" />}
-        />
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Daily Engagement */}
-        <div className="card p-5">
-          <h3 className="font-semibold text-slate-100 mb-4">Daily Active Users</h3>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={engagementData}>
-              <XAxis dataKey="day" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: "8px", fontSize: "12px" }}
-                cursor={{ fill: "rgba(255,255,255,0.05)" }}
-              />
-              <Bar dataKey="users" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+      {stats && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <StatCard label="Total Students" value={stats.total_students} color="blue" icon={<Users className="w-4 h-4" />} />
+          <StatCard label="Active Students" value={stats.active_students} color="green" icon={<TrendingUp className="w-4 h-4" />} />
+          <StatCard label="At Risk" value={stats.at_risk_students} color="red" icon={<AlertTriangle className="w-4 h-4" />} />
+          <StatCard label="Avg Progress" value={`${stats.avg_progress}%`} color="yellow" icon={<Award className="w-4 h-4" />} />
         </div>
+      )}
 
-        {/* Progress Distribution */}
-        <div className="card p-5">
-          <h3 className="font-semibold text-slate-100 mb-4">Progress Distribution</h3>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={progressDistribution}>
-              <XAxis dataKey="range" tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: "8px", fontSize: "12px" }}
-                cursor={{ fill: "rgba(255,255,255,0.05)" }}
-              />
-              <Bar dataKey="count" fill="#22c55e" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* AI Insights */}
+      {/* Students Table */}
       <div className="card p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="w-4 h-4 text-brand-green" />
-          <h3 className="font-semibold text-slate-100">AI Platform Insights</h3>
-        </div>
-        <div className="grid sm:grid-cols-3 gap-3">
-          {[
-            { icon: "⚠️", title: "At-Risk Students", desc: "Rahul and Dev haven't logged in for 5+ days. Consider sending an engagement email.", urgency: "high" },
-            { icon: "📈", title: "Top Performer", desc: "Sneha Patel is 90% complete with a 30-day streak. She's ready for advanced projects.", urgency: "positive" },
-            { icon: "🎯", title: "Common Drop-off", desc: "55% of students stop progressing at the ML Core stage. Consider adding more beginner-friendly resources.", urgency: "medium" },
-          ].map((insight, i) => (
-            <div
-              key={i}
-              className={cn(
-                "p-4 rounded-xl border",
-                insight.urgency === "high" ? "bg-red-400/5 border-red-400/20" :
-                insight.urgency === "positive" ? "bg-brand-green/5 border-brand-green/20" :
-                "bg-yellow-400/5 border-yellow-400/20"
-              )}
-            >
-              <span className="text-2xl">{insight.icon}</span>
-              <h4 className={cn(
-                "font-semibold text-sm mt-2 mb-1",
-                insight.urgency === "high" ? "text-red-400" :
-                insight.urgency === "positive" ? "text-brand-green" : "text-yellow-400"
-              )}>
-                {insight.title}
-              </h4>
-              <p className="text-xs text-slate-400 leading-relaxed">{insight.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Student Table */}
-      <div className="card">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/60">
-          <h3 className="font-semibold text-slate-100">Student Management</h3>
-          <div className="flex items-center gap-2 bg-slate-700/40 border border-slate-600 rounded-lg px-3 py-1.5">
-            <Search className="w-3.5 h-3.5 text-slate-400" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <h2 className="font-semibold text-slate-100">All Students ({students.length})</h2>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <input
-              type="text"
-              placeholder="Search students..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="bg-transparent text-sm text-slate-300 placeholder-slate-500 outline-none w-40"
+              placeholder="Search students..."
+              className="pl-9 pr-4 py-2 bg-slate-700/40 border border-slate-600 rounded-lg text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-brand-green/50 w-60"
             />
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-700/60">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Student</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Progress</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Streak</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Last Active</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3" />
+              <tr className="border-b border-slate-700">
+                <th className="text-left text-xs font-medium text-slate-400 pb-3">Student</th>
+                <th className="text-left text-xs font-medium text-slate-400 pb-3">Progress</th>
+                <th className="text-left text-xs font-medium text-slate-400 pb-3 hidden md:table-cell">Streak</th>
+                <th className="text-left text-xs font-medium text-slate-400 pb-3 hidden md:table-cell">Last Active</th>
+                <th className="text-left text-xs font-medium text-slate-400 pb-3">Status</th>
               </tr>
             </thead>
-            <tbody>
-              {filtered.map((student, i) => (
-                <tr
-                  key={student.id}
-                  className={cn(
-                    "hover:bg-slate-700/20 transition-colors",
-                    i < filtered.length - 1 && "border-b border-slate-700/40"
-                  )}
-                >
-                  <td className="px-5 py-4">
+            <tbody className="divide-y divide-slate-700/50">
+              {students.map((student) => (
+                <tr key={student.id} className="hover:bg-slate-700/20 transition-colors">
+                  <td className="py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-green to-brand-blue flex items-center justify-center text-white text-xs font-bold shrink-0">
-                        {student.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-green/20 to-brand-blue/20 flex items-center justify-center text-sm font-bold text-brand-green">
+                        {student.name.charAt(0)}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-slate-200">{student.name}</p>
+                        <p className="font-medium text-slate-200">{student.name}</p>
                         <p className="text-xs text-slate-500">{student.email}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="py-3">
                     <div className="flex items-center gap-2">
-                      <ProgressBar value={student.progress} color={student.progress >= 60 ? "green" : "yellow"} className="w-20" />
-                      <span className="text-xs text-slate-300 w-8 shrink-0">{student.progress}%</span>
+                      <ProgressBar value={student.progress} color={student.progress >= 70 ? "green" : student.progress >= 40 ? "yellow" : "red"} className="w-20" />
+                      <span className="text-xs text-slate-400 w-8">{Math.round(student.progress)}%</span>
                     </div>
                   </td>
-                  <td className="px-4 py-4 hidden sm:table-cell">
-                    <span className="text-sm text-slate-300">
-                      {student.streak > 0 ? `🔥 ${student.streak}` : "—"}
-                    </span>
+                  <td className="py-3 hidden md:table-cell">
+                    <span className="text-slate-300">🔥 {student.streak}d</span>
                   </td>
-                  <td className="px-4 py-4 hidden md:table-cell">
-                    <span className="text-sm text-slate-400">{student.lastActive}</span>
+                  <td className="py-3 hidden md:table-cell">
+                    <span className="text-slate-400 text-xs">{student.last_active || "Never"}</span>
                   </td>
-                  <td className="px-4 py-4">
-                    <Badge
-                      variant={student.status === "active" ? "green" : student.status === "at-risk" ? "yellow" : "red"}
-                    >
+                  <td className="py-3">
+                    <Badge variant={
+                      student.status === "active" ? "green" :
+                      student.status === "at-risk" ? "red" : "gray"
+                    }>
                       {student.status}
                     </Badge>
-                  </td>
-                  <td className="px-4 py-4">
-                    <button className="p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-700/60 transition-colors">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* System Status */}
-      <div className="card p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Cpu className="w-4 h-4 text-slate-400" />
-          <h3 className="font-semibold text-slate-100">System Status</h3>
-        </div>
-        <div className="grid sm:grid-cols-3 gap-4">
-          {[
-            { label: "AI Mentor API", status: "operational", uptime: "99.9%" },
-            { label: "Assessment Engine", status: "operational", uptime: "99.7%" },
-            { label: "Content CDN", status: "degraded", uptime: "97.2%" },
-          ].map((sys) => (
-            <div key={sys.label} className="flex items-center gap-3 p-3 rounded-lg bg-slate-700/30">
-              <div className={cn(
-                "w-2.5 h-2.5 rounded-full shrink-0",
-                sys.status === "operational" ? "bg-brand-green animate-pulse" : "bg-yellow-400"
-              )} />
-              <div>
-                <p className="text-sm font-medium text-slate-200">{sys.label}</p>
-                <p className="text-xs text-slate-400">Uptime: {sys.uptime}</p>
-              </div>
-              <Badge variant={sys.status === "operational" ? "green" : "yellow"} className="ml-auto">
-                {sys.status}
-              </Badge>
+          {students.length === 0 && (
+            <div className="text-center py-8 text-slate-500">
+              {search ? "No students match your search" : "No students registered yet"}
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>

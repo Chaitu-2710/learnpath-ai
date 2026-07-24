@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { Sparkles, Mail, Lock, Eye, EyeOff, AlertCircle, ArrowRight, ShieldCheck, UserCheck } from "lucide-react";
+import { Sparkles, Mail, Lock, Eye, EyeOff, AlertCircle, ArrowRight, ArrowLeft, ShieldCheck, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
@@ -24,20 +24,19 @@ export default function LoginPage() {
     }
 
     setIsSubmitting(true);
-    await new Promise((r) => setTimeout(r, 400));
 
-    const result = login(email, password);
+    const result = await login(email, password);
     if (!result.success) {
       setError(result.error || "Login failed");
     }
     setIsSubmitting(false);
   };
 
-  const handleQuickLogin = (emailVal: string, passVal: string) => {
+  const handleQuickLogin = async (emailVal: string, passVal: string) => {
     setEmail(emailVal);
     setPassword(passVal);
     setError("");
-    login(emailVal, passVal);
+    await login(emailVal, passVal);
   };
 
   return (
@@ -49,6 +48,15 @@ export default function LoginPage() {
       </div>
 
       <div className="w-full max-w-md relative animate-fade-in">
+        {/* Back to Home Link */}
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-brand-green mb-4 transition-colors group"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          <span>Back to Home</span>
+        </Link>
+
         {/* Logo */}
         <div className="text-center mb-6">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-green to-brand-blue flex items-center justify-center mx-auto mb-3 shadow-lg shadow-brand-green/20">

@@ -1,250 +1,253 @@
 "use client";
 
-import { useState } from "react";
-import { Bell, Lock, Shield, Trash2, Save, User, Palette, BookOpen } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  Bell, Eye, Share2, Target, Save, Lock, Loader2, CheckCircle2, AlertCircle
+} from "lucide-react";
+import { settingsApi } from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
+import { SettingsSkeleton } from "@/components/ui/Skeletons";
 
-function Toggle({ enabled, onChange }: { enabled: boolean; onChange: () => void }) {
-  return (
-    <button
-      onClick={onChange}
-      className={cn(
-        "relative w-10 h-5.5 rounded-full transition-all duration-300",
-        enabled ? "bg-brand-green" : "bg-slate-600"
-      )}
-      style={{ height: "22px" }}
-    >
-      <div
-        className={cn(
-          "absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform duration-300",
-          enabled && "translate-x-5"
-        )}
-      />
-    </button>
-  );
+interface Settings {
+  email_notifications: boolean;
+  streak_reminders: boolean;
+  weekly_report: boolean;
+  ai_suggestions: boolean;
+  public_profile: boolean;
+  share_progress: boolean;
+  daily_goal_hours: number;
+  learning_style: string;
 }
 
-const sections = [
-  { id: "profile", label: "Profile", icon: User },
-  { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "appearance", label: "Appearance", icon: Palette },
-  { id: "learning", label: "Learning Preferences", icon: BookOpen },
-  { id: "privacy", label: "Privacy & Security", icon: Shield },
-  { id: "account", label: "Account", icon: Lock },
-];
+const Toggle = ({ checked, onToggle }: { checked: boolean; onToggle: () => void }) => (
+  <button
+    onClick={onToggle}
+    className={cn(
+      "relative w-11 h-6 rounded-full transition-colors",
+      checked ? "bg-brand-green" : "bg-slate-600"
+    )}
+  >
+    <div
+      className={cn(
+        "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform",
+        checked ? "translate-x-5" : "translate-x-0"
+      )}
+    />
+  </button>
+);
 
 export default function SettingsPage() {
-  const [activeSection, setActiveSection] = useState("profile");
-  const [settings, setSettings] = useState({
-    emailNotifications: true,
-    streakReminders: true,
-    weeklyReport: true,
-    aiSuggestions: true,
-    publicProfile: false,
-    shareProgress: true,
-    darkMode: true,
-    dailyGoalHours: 2,
-  });
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
-  const toggle = (key: keyof typeof settings) => {
-    setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
+  // Password change state
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [isChangingPw, setIsChangingPw] = useState(false);
+
+  useEffect(() => {
+    settingsApi.get().then(setSettings).catch(() => {}).finally(() => setIsLoading(false));
+  }, []);
+
+  const showToast = (type: "success" | "error", msg: string) => {
+    setToast({ type, msg });
+    setTimeout(() => setToast(null), 3000);
   };
 
+  const toggle = (key: keyof Settings) => {
+    if (!settings) return;
+    setSettings({ ...settings, [key]: !settings[key] });
+  };
+
+  const handleSave = async () => {
+    if (!settings) return;
+    setIsSaving(true);
+    try {
+      await settingsApi.update(settings);
+      showToast("success", "Settings saved successfully!");
+    } catch (err: any) {
+      showToast("error", err.message || "Failed to save settings");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!newPw || !currentPw) return;
+    if (newPw !== confirmPw) {
+      showToast("error", "Passwords do not match");
+      return;
+    }
+    if (newPw.length < 6) {
+      showToast("error", "Password must be at least 6 characters");
+      return;
+    }
+    setIsChangingPw(true);
+    try {
+      await settingsApi.changePassword(currentPw, newPw);
+      showToast("success", "Password changed successfully!");
+      setCurrentPw(""); setNewPw(""); setConfirmPw("");
+    } catch (err: any) {
+      showToast("error", err.message || "Failed to change password");
+    } finally {
+      setIsChangingPw(false);
+    }
+  };
+
+  if (isLoading) return <SettingsSkeleton />;
+
+  if (!settings) {
+    return (
+      <div className="p-6 text-center text-slate-400">Failed to load settings. Make sure the backend is running.</div>
+    );
+  }
+
   return (
-    <div className="p-4 lg:p-6 animate-fade-in">
-      <div className="mb-6">
+    <div className="p-4 lg:p-6 space-y-6 animate-fade-in max-w-2xl">
+      {/* Toast */}
+      {toast && (
+        <div className={cn(
+          "fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium animate-slide-up",
+          toast.type === "success" ? "bg-brand-green/10 border border-brand-green/30 text-brand-green" : "bg-red-400/10 border border-red-400/20 text-red-400"
+        )}>
+          {toast.type === "success" ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          {toast.msg}
+        </div>
+      )}
+
+      <div>
         <h1 className="text-2xl font-bold text-slate-100">Settings</h1>
-        <p className="text-slate-400 mt-1">Manage your account and preferences</p>
+        <p className="text-slate-400 mt-1">Manage your preferences — all changes are saved to the cloud.</p>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 max-w-4xl">
-        {/* Sidebar */}
-        <aside className="lg:w-52 shrink-0">
-          <nav className="flex lg:flex-col gap-1 overflow-x-auto scrollbar-hidden">
-            {sections.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => setActiveSection(id)}
-                className={cn(
-                  "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
-                  activeSection === id
-                    ? "bg-brand-green/10 text-brand-green border border-brand-green/20"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-700/40"
-                )}
-              >
-                <Icon className="w-4 h-4 shrink-0" />{label}
-              </button>
-            ))}
-          </nav>
-        </aside>
-
-        {/* Content */}
-        <div className="flex-1 space-y-4">
-          {activeSection === "profile" && (
-            <div className="card p-6 space-y-5">
-              <h2 className="font-semibold text-slate-100">Profile Information</h2>
-              {[
-                { label: "Full Name", value: "Arjun Sharma", type: "text" },
-                { label: "Email", value: "arjun@example.com", type: "email" },
-                { label: "Career Target", value: "Machine Learning Engineer", type: "text" },
-                { label: "University", value: "VIT University", type: "text" },
-                { label: "Graduation Year", value: "2026", type: "text" },
-              ].map((field) => (
-                <div key={field.label}>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5">{field.label}</label>
-                  <input
-                    type={field.type}
-                    defaultValue={field.value}
-                    className="w-full bg-slate-700/40 border border-slate-600 rounded-lg px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-brand-green/50 transition-colors"
-                  />
-                </div>
-              ))}
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">Learning Goal</label>
-                <textarea
-                  defaultValue="Become a Machine Learning Engineer at a top tech company"
-                  rows={2}
-                  className="w-full bg-slate-700/40 border border-slate-600 rounded-lg px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-brand-green/50 transition-colors resize-none"
-                />
-              </div>
-              <button className="btn-primary"><Save className="w-4 h-4" />Save Changes</button>
-            </div>
-          )}
-
-          {activeSection === "notifications" && (
-            <div className="card p-6 space-y-5">
-              <h2 className="font-semibold text-slate-100">Notification Preferences</h2>
-              {[
-                { key: "emailNotifications" as const, label: "Email Notifications", desc: "Receive learning updates via email" },
-                { key: "streakReminders" as const, label: "Streak Reminders", desc: "Daily reminders to maintain your learning streak" },
-                { key: "weeklyReport" as const, label: "Weekly Progress Report", desc: "Get a summary of your progress every Sunday" },
-                { key: "aiSuggestions" as const, label: "AI Recommendations", desc: "Personalized course and project suggestions from AI" },
-              ].map(({ key, label, desc }) => (
-                <div key={key} className="flex items-center justify-between py-2 border-b border-slate-700/40 last:border-0">
-                  <div>
-                    <p className="text-sm font-medium text-slate-200">{label}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
-                  </div>
-                  <Toggle enabled={settings[key] as boolean} onChange={() => toggle(key)} />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {activeSection === "learning" && (
-            <div className="card p-6 space-y-5">
-              <h2 className="font-semibold text-slate-100">Learning Preferences</h2>
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-2">Daily Learning Goal</label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="range" min={0.5} max={8} step={0.5}
-                    value={settings.dailyGoalHours}
-                    onChange={(e) => setSettings(prev => ({ ...prev, dailyGoalHours: Number(e.target.value) }))}
-                    className="flex-1 accent-brand-green"
-                  />
-                  <span className="text-sm font-semibold text-brand-green w-16">{settings.dailyGoalHours} hrs/day</span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-2">Preferred Learning Style</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {["Video-first", "Reading-first", "Project-based", "Mixed"].map((style) => (
-                    <button
-                      key={style}
-                      className={cn(
-                        "py-2 rounded-lg text-sm border transition-all",
-                        style === "Mixed"
-                          ? "border-brand-green/40 bg-brand-green/10 text-brand-green"
-                          : "border-slate-600 text-slate-400 hover:border-slate-400"
-                      )}
-                    >
-                      {style}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeSection === "privacy" && (
-            <div className="card p-6 space-y-5">
-              <h2 className="font-semibold text-slate-100">Privacy & Security</h2>
-              {[
-                { key: "publicProfile" as const, label: "Public Profile", desc: "Allow others to view your profile and achievements" },
-                { key: "shareProgress" as const, label: "Share Progress", desc: "Share learning milestones on your public profile" },
-              ].map(({ key, label, desc }) => (
-                <div key={key} className="flex items-center justify-between py-2 border-b border-slate-700/40 last:border-0">
-                  <div>
-                    <p className="text-sm font-medium text-slate-200">{label}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
-                  </div>
-                  <Toggle enabled={settings[key] as boolean} onChange={() => toggle(key)} />
-                </div>
-              ))}
-              <button className="btn-outline w-full justify-center">Change Password</button>
-            </div>
-          )}
-
-          {activeSection === "account" && (
-            <div className="card p-6 space-y-5">
-              <h2 className="font-semibold text-slate-100">Account Management</h2>
-              <div className="p-4 rounded-lg bg-red-400/5 border border-red-400/20">
-                <div className="flex items-start gap-3">
-                  <Trash2 className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className="font-semibold text-red-400">Delete Account</h3>
-                    <p className="text-xs text-slate-400 mt-1 mb-3">
-                      This action is permanent and cannot be undone. All your progress, achievements, and data will be lost.
-                    </p>
-                    <button className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-400/10 text-red-400 border border-red-400/20 hover:bg-red-400 hover:text-white transition-all">
-                      Delete My Account
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {(activeSection === "appearance") && (
-            <div className="card p-6 space-y-5">
-              <h2 className="font-semibold text-slate-100">Appearance</h2>
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-3">Theme</label>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { name: "Dark", active: true, bg: "bg-slate-900", accent: "bg-brand-green" },
-                    { name: "Light", active: false, bg: "bg-slate-100", accent: "bg-brand-green" },
-                    { name: "System", active: false, bg: "bg-gradient-to-r from-slate-900 to-slate-100", accent: "bg-brand-green" },
-                  ].map(({ name, active, bg }) => (
-                    <button
-                      key={name}
-                      className={cn(
-                        "p-3 rounded-xl border transition-all text-center",
-                        active ? "border-brand-green/40 bg-brand-green/5" : "border-slate-700 hover:border-slate-500"
-                      )}
-                    >
-                      <div className={cn("w-full h-12 rounded-lg mb-2", bg)} />
-                      <p className={cn("text-xs font-medium", active ? "text-brand-green" : "text-slate-400")}>{name}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-2">Accent Color</label>
-                <div className="flex gap-3">
-                  {["#22c55e", "#3b82f6", "#a855f7", "#f59e0b", "#ef4444"].map((color) => (
-                    <button
-                      key={color}
-                      className={cn("w-8 h-8 rounded-full border-2", color === "#22c55e" ? "border-white" : "border-transparent")}
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+      {/* Notifications */}
+      <div className="card p-5 space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Bell className="w-4 h-4 text-brand-blue" />
+          <h2 className="font-semibold text-slate-100">Notifications</h2>
         </div>
+        {([
+          ["email_notifications", "Email Notifications", "Receive updates about your progress via email"],
+          ["streak_reminders", "Streak Reminders", "Get daily reminders to maintain your learning streak"],
+          ["weekly_report", "Weekly Report", "Receive a summary of your weekly progress"],
+          ["ai_suggestions", "AI Suggestions", "Get personalized recommendations from your AI mentor"],
+        ] as [keyof Settings, string, string][]).map(([key, label, desc]) => (
+          <div key={key} className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-200">{label}</p>
+              <p className="text-xs text-slate-400">{desc}</p>
+            </div>
+            <Toggle checked={!!settings[key]} onToggle={() => toggle(key)} />
+          </div>
+        ))}
+      </div>
+
+      {/* Privacy */}
+      <div className="card p-5 space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Eye className="w-4 h-4 text-brand-green" />
+          <h2 className="font-semibold text-slate-100">Privacy</h2>
+        </div>
+        {([
+          ["public_profile", "Public Profile", "Allow others to see your profile and achievements"],
+          ["share_progress", "Share Progress", "Show your learning progress on your public profile"],
+        ] as [keyof Settings, string, string][]).map(([key, label, desc]) => (
+          <div key={key} className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-200">{label}</p>
+              <p className="text-xs text-slate-400">{desc}</p>
+            </div>
+            <Toggle checked={!!settings[key]} onToggle={() => toggle(key)} />
+          </div>
+        ))}
+      </div>
+
+      {/* Learning Preferences */}
+      <div className="card p-5 space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Target className="w-4 h-4 text-yellow-400" />
+          <h2 className="font-semibold text-slate-100">Learning Preferences</h2>
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-slate-200">Daily Goal</p>
+            <p className="text-xs text-slate-400">Hours per day target</p>
+          </div>
+          <select
+            value={settings.daily_goal_hours}
+            onChange={(e) => setSettings({ ...settings, daily_goal_hours: parseFloat(e.target.value) })}
+            className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-slate-200 outline-none focus:border-brand-green/50"
+          >
+            {[0.5, 1, 1.5, 2, 2.5, 3, 4, 5].map((h) => (
+              <option key={h} value={h}>{h}h/day</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-slate-200">Learning Style</p>
+            <p className="text-xs text-slate-400">How you prefer to learn</p>
+          </div>
+          <select
+            value={settings.learning_style}
+            onChange={(e) => setSettings({ ...settings, learning_style: e.target.value })}
+            className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-slate-200 outline-none focus:border-brand-green/50"
+          >
+            {["Mixed", "Visual", "Reading", "Practice", "Video"].map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Save Button */}
+      <button
+        onClick={handleSave}
+        disabled={isSaving}
+        className="btn-primary w-full flex items-center justify-center gap-2"
+      >
+        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+        {isSaving ? "Saving..." : "Save All Settings"}
+      </button>
+
+      {/* Change Password */}
+      <div className="card p-5 space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Lock className="w-4 h-4 text-brand-blue" />
+          <h2 className="font-semibold text-slate-100">Change Password</h2>
+        </div>
+        <input
+          type="password"
+          placeholder="Current password"
+          value={currentPw}
+          onChange={(e) => setCurrentPw(e.target.value)}
+          className="w-full bg-slate-700/40 border border-slate-600 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-brand-green/50 transition-colors"
+        />
+        <input
+          type="password"
+          placeholder="New password (min 6 chars)"
+          value={newPw}
+          onChange={(e) => setNewPw(e.target.value)}
+          className="w-full bg-slate-700/40 border border-slate-600 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-brand-green/50 transition-colors"
+        />
+        <input
+          type="password"
+          placeholder="Confirm new password"
+          value={confirmPw}
+          onChange={(e) => setConfirmPw(e.target.value)}
+          className="w-full bg-slate-700/40 border border-slate-600 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-brand-green/50 transition-colors"
+        />
+        <button
+          onClick={handleChangePassword}
+          disabled={isChangingPw || !currentPw || !newPw || !confirmPw}
+          className="btn-outline w-full flex items-center justify-center gap-2"
+        >
+          {isChangingPw ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+          {isChangingPw ? "Changing..." : "Change Password"}
+        </button>
       </div>
     </div>
   );

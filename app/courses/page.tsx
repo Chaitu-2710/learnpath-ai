@@ -1,18 +1,76 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { courses } from "@/lib/data/mockData";
+import { useState, useMemo, useEffect } from "react";
+import { coursesApi } from "@/lib/apiClient";
 import type { Course } from "@/lib/types";
-import { Star, Clock, PlayCircle, CheckCircle2, BookOpen, Filter } from "lucide-react";
+import { Star, Clock, PlayCircle, CheckCircle2, BookOpen, Filter, Loader2 } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { cn } from "@/lib/utils";
+import { PageSkeleton } from "@/components/ui/Skeletons";
 
 const categories = ["All", "AI/ML", "Data Science", "CS Fundamentals", "Web Dev"];
+
+const DEMO_COURSES = [
+  {
+    id: "c1",
+    title: "Machine Learning & AI Masterclass",
+    description: "Comprehensive guide to supervised, unsupervised, and deep learning algorithms.",
+    thumbnail: "/images/ai_learning_hero.png",
+    provider: "Stanford / Coursera",
+    duration: "14 hours",
+    rating: 4.9,
+    difficulty: "beginner",
+    status: "in-progress",
+    progress: 45,
+    category: "AI/ML",
+    skillsGained: ["Python", "Scikit-Learn", "Neural Networks"],
+    careerRelevance: "Essential for AI Engineer roles",
+  },
+  {
+    id: "c2",
+    title: "Deep Learning & Neural Networks",
+    description: "Build TensorFlow and PyTorch models from scratch.",
+    thumbnail: "/images/ai_learning_hero.png",
+    provider: "DeepLearning.AI",
+    duration: "20 hours",
+    rating: 4.8,
+    difficulty: "intermediate",
+    status: "not-started",
+    progress: 0,
+    category: "AI/ML",
+    skillsGained: ["PyTorch", "TensorFlow", "CNNs", "Transformers"],
+    careerRelevance: "Required for Computer Vision & NLP",
+  },
+  {
+    id: "c3",
+    title: "Data Structures & Algorithms in Python",
+    description: "Master LeetCode problem solving, Big-O analysis, and technical interview coding.",
+    thumbnail: "/images/ai_learning_hero.png",
+    provider: "LearnPath AI",
+    duration: "10 hours",
+    rating: 4.9,
+    difficulty: "beginner",
+    status: "completed",
+    progress: 100,
+    category: "CS Fundamentals",
+    skillsGained: ["Arrays", "Trees", "Graphs", "Dynamic Programming"],
+    careerRelevance: "Core foundation for technical interviews",
+  },
+];
 
 export default function CoursesPage() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [filter, setFilter] = useState<"all" | "in-progress" | "not-started" | "completed">("all");
+  const [courses, setCourses] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    coursesApi.list()
+      .then(setCourses)
+      .catch(() => setCourses(DEMO_COURSES))
+      .finally(() => setIsLoading(false));
+  }, []);
 
   const filtered = useMemo(() => {
     return courses.filter((c) => {
@@ -20,7 +78,9 @@ export default function CoursesPage() {
       const statusMatch = filter === "all" || c.status === filter;
       return catMatch && statusMatch;
     });
-  }, [activeCategory, filter]);
+  }, [courses, activeCategory, filter]);
+
+  if (isLoading) return <PageSkeleton cards={6} />;
 
   return (
     <div className="p-4 lg:p-6 space-y-6 animate-fade-in">
@@ -133,28 +193,41 @@ function CourseCard({ course }: { course: Course }) {
           </div>
           <span className="text-xs text-slate-300 font-medium">{course.rating}</span>
           <span className="ml-auto">
-            <Badge variant={course.difficulty === "beginner" ? "green" : course.difficulty === "intermediate" ? "yellow" : "red"}>
+            <Badge
+              variant={
+                course.difficulty === "beginner"
+                  ? "green"
+                  : course.difficulty === "intermediate"
+                  ? "yellow"
+                  : "red"
+              }
+            >
               {course.difficulty}
             </Badge>
           </span>
         </div>
 
         {/* Skills gained */}
-        <div className="flex flex-wrap gap-1 mb-3">
-          {course.skillsGained.slice(0, 3).map((skill) => (
-            <span key={skill} className="text-[11px] px-2 py-0.5 rounded-md bg-slate-700/60 text-slate-300">
-              {skill}
-            </span>
-          ))}
-          {course.skillsGained.length > 3 && (
-            <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-700/60 text-slate-400">
-              +{course.skillsGained.length - 3}
-            </span>
-          )}
-        </div>
+        {(() => {
+          const skills = course.skillsGained || course.skills_gained || [];
+          return (
+            <div className="flex flex-wrap gap-1 mb-3">
+              {skills.slice(0, 3).map((skill: string) => (
+                <span key={skill} className="text-[11px] px-2 py-0.5 rounded-md bg-slate-700/60 text-slate-300">
+                  {skill}
+                </span>
+              ))}
+              {skills.length > 3 && (
+                <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-700/60 text-slate-400">
+                  +{skills.length - 3}
+                </span>
+              )}
+            </div>
+          );
+        })()}
 
         <p className="text-xs text-slate-400 mb-3">
-          <span className="text-brand-blue font-medium">Career relevance:</span> {course.careerRelevance}
+          <span className="text-brand-blue font-medium">Career relevance:</span> {course.careerRelevance || course.career_relevance || "High industry demand"}
         </p>
 
         {/* Progress */}

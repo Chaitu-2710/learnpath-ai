@@ -5,14 +5,15 @@ import { usePathname } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
+import NavigationProgress from "@/components/ui/NavigationProgress";
 
-const PUBLIC_ROUTES = ["/login", "/signup"];
+const NO_SHELL_ROUTES = ["/login", "/signup"];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const pathname = usePathname();
 
-  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
+  const isNoShellRoute = NO_SHELL_ROUTES.includes(pathname);
 
   // Loading state
   if (isLoading) {
@@ -26,14 +27,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Public routes (login/signup) — render without sidebar/nav
-  if (isPublicRoute || !user) {
+  // Public routes / unauthenticated visitors — render clean full-width page without sidebar/topbar
+  if (isNoShellRoute || !user) {
     return <>{children}</>;
   }
 
   // Authenticated layout
   return (
     <div className="flex min-h-screen">
+      <NavigationProgress />
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar />

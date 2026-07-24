@@ -48,12 +48,18 @@ export interface Project {
   id: string;
   title: string;
   description: string;
-  difficulty: Difficulty;
-  requiredSkills: string[];
-  estimatedTime: string;
-  careerValue: number; // 0–100
-  tags: string[];
+  difficulty: "easy" | "medium" | "hard" | "beginner" | "intermediate" | "advanced";
+  requiredSkills?: string[];
+  estimatedTime?: string;
+  duration?: string;
+  careerValue?: number; // 0–100
+  career_value?: number;
+  tags?: string[];
   status: Status;
+  githubUrl?: string;
+  demoUrl?: string;
+  category?: string;
+  progress?: number;
 }
 
 export interface RoadmapStage {
@@ -63,7 +69,9 @@ export interface RoadmapStage {
   level: "beginner" | "intermediate" | "advanced" | "expert";
   status: Status;
   topics: RoadmapTopic[];
-  estimatedDuration: string;
+  estimatedDuration?: string;
+  estimatedWeeks?: number;
+  order?: number;
   milestone?: string;
 }
 
@@ -72,7 +80,9 @@ export interface RoadmapTopic {
   title: string;
   status: Status;
   type: "concept" | "project" | "assessment" | "certification";
-  duration: string;
+  duration?: string;
+  estimatedHours?: number;
+  xp?: number;
 }
 
 export interface Assessment {
